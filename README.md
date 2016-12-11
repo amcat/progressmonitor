@@ -12,6 +12,8 @@ pip install progressmonitor
 
 ## Usage
 
+(See also [example.py](example.py))
+
 ### Initialization and task updates
 
 A monitor keeps track of progress in units specified by the task.
