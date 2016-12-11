@@ -1,6 +1,6 @@
 from nose.tools import assert_almost_equal, assert_equal
 
-from progressmonitor import ProgressMonitor
+from progressmonitor import ProgressMonitor, monitored
 
 
 def test_submonitors():
@@ -53,6 +53,7 @@ def test_submonitors():
     assert_almost_equal(sm2.progress, 1)
     assert_almost_equal(monitor.progress, 1)
 
+
 def test_message():
     monitor = ProgressMonitor()
     monitor.begin(100, "Monitor", "First step")
@@ -82,19 +83,45 @@ def test_contextmanager():
         assert_equal(monitor.progress, .5)
     assert_equal(monitor.progress, 1)
 
+
 def test_subtask():
+    main_monitor = ProgressMonitor()
+
     def my_subtask(monitor):
         with monitor.task(2, "Subtask"):
-            sm.update()
+            monitor.update()
+            assert_equal(monitor.progress, .5)
+            assert_equal(main_monitor.progress, .5 * .5)
 
-    monitor = ProgressMonitor()
-    with monitor.task(10, "Main"):
-        with monitor.subtask(5) as sm:
+    with main_monitor.task(10, "Main"):
+        with main_monitor.subtask(5) as sm:
             my_subtask(sm)
-            assert_equal(sm.progress, .5)
-            assert_equal(monitor.progress, .5 * .5)
-        assert_equal(monitor.progress, .5)  # subtask is forced 'done'
+        assert_equal(main_monitor.progress, .5)  # subtask is forced 'done'
 
+
+def test_decorator():
+    @monitored(10)
+    def mysubtask(monitor):
+        monitor.update(5)
+        assert_equal(monitor.name, "mysubtask")
+        assert_equal(monitor.progress, .5)
+        assert_equal(m.progress, .375)
+
+    m = ProgressMonitor()
+    with m.task(20):
+        m.update(5)
+        with m.subtask(5) as sub:
+            mysubtask(sub)
+            assert_equal(m.progress, .5)
+        assert_equal(m.message, "mysubtask done")
+    assert_equal(m.progress, 1)
+
+    # test robustness against subtask never calling begin
+    m = ProgressMonitor()
+    with m.task(10):
+        with m.subtask(5) as sub:
+            pass
+        assert_equal(m.progress, .5)
 
 
 

@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name="progressmonitor",
-    version="0.2",
+    version="0.3",
     description="Progress Monitor with submonitors",
     author="Wouter van Atteveldt",
     author_email="wouter@vanatteveldt.com",
