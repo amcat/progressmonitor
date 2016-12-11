@@ -1,6 +1,32 @@
 import logging
+from contextlib import contextmanager
+
 log = logging.getLogger(__name__)
-LOG_FORMAT = "[{name}{percent:0.1f}%] {self.message}"
+
+from functools import wraps
+
+
+def monitored(total: int, name=None, message=None):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kargs):
+            if 'monitor' not in kargs:
+                kargs['monitor'] = NullMonitor()
+            with kargs['monitor'].task(total, name, message):
+                f(*args, **kargs)
+        return wrapper
+    return decorator
+
+
+def log_listener(log:logging.Logger=None, level=logging.INFO):
+    if log is None:
+        log = logging.getLogger("ProgressMonitor")
+    def listen(monitor):
+        name = "{}: ".format(monitor.name) if monitor.name is not None else ""
+        msg = "[{name}{monitor.progress:0.1f}%] {monitor.message}".format(**locals())
+        log.log(level, msg)
+    return listen
+
 
 class ProgressMonitor(object):
     """
@@ -27,11 +53,27 @@ class ProgressMonitor(object):
         self.listeners = set()
         self.sub_monitors = {}  # monitor : units of (my) work
 
-    def begin(self, total, name=None, message=None):
+    def begin(self, total: int, name=None, message=None):
         self.total = total
         message = message or name or "Working..."
         self.name = name or "ProgressMonitor"
         self.update(0, message)
+
+    @contextmanager
+    def task(self, total: int, name=None, message=None):
+        self.begin(total, name, message)
+        try:
+            yield self
+        finally:
+            self.done()
+
+    @contextmanager
+    def subtask(self, units: int):
+        sm = self.submonitor(units)
+        try:
+            yield sm
+        finally:
+            sm.done()
 
     @property
     def progress(self):
@@ -57,7 +99,7 @@ class ProgressMonitor(object):
     def remove_listener(self, func):
         self.listeners.remove(func)
 
-    def submonitor(self, units: int, *args, **kargs):
+    def submonitor(self, units: int, *args, **kargs) -> 'ProgressMonitor':
         monitor = SubMonitor(self, *args, **kargs)
         self.sub_monitors[monitor] = units
         return monitor
@@ -87,3 +129,4 @@ class NullMonitor(ProgressMonitor):
 
     def update(self, *args, **kargs):
         pass
+

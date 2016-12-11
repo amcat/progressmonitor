@@ -72,3 +72,29 @@ def test_message():
     assert_equal(monitor.message, "Submonitor done")
 
 
+def test_contextmanager():
+    monitor = ProgressMonitor()
+    with monitor.task(10, "Taak"):
+        assert_equal(monitor.message, "Taak")
+        assert_equal(monitor.progress, 0)
+
+        monitor.update(5)
+        assert_equal(monitor.progress, .5)
+    assert_equal(monitor.progress, 1)
+
+def test_subtask():
+    def my_subtask(monitor):
+        with monitor.task(2, "Subtask"):
+            sm.update()
+
+    monitor = ProgressMonitor()
+    with monitor.task(10, "Main"):
+        with monitor.subtask(5) as sm:
+            my_subtask(sm)
+            assert_equal(sm.progress, .5)
+            assert_equal(monitor.progress, .5 * .5)
+        assert_equal(monitor.progress, .5)  # subtask is forced 'done'
+
+
+
+
