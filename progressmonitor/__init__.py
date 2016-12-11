@@ -31,24 +31,13 @@ def monitored(total: int, name=None, message=None):
     return decorator
 
 
-def log_listener(log:logging.Logger=None, level=logging.INFO):
-    """Progress Monitor listener that logs all updates to the given logger"""
-    if log is None:
-        log = logging.getLogger("ProgressMonitor")
-    def listen(monitor):
-        name = "{}: ".format(monitor.name) if monitor.name is not None else ""
-        msg = "[{name}{monitor.progress:0.1f}%] {monitor.message}".format(**locals())
-        log.log(level, msg)
-    return listen
-
-
 class ProgressMonitor(object):
     """
     A Progress Monitor keeps track of pogress of tasks with optional subtasks.
 
     Usage:
     m = ProgressMonitor()
-    m.begin("task name", total_units[, message])
+    m.begin(total_units, [task_name], [message])
     m.update(units[, message])
     [m.done()]
 
@@ -56,7 +45,7 @@ class ProgressMonitor(object):
     who has its own total_units (e.g. 10):
 
     sm = m.submonitor(50)
-    sm.begin("subtask name", 10)
+    sm.begin(10, "subtask name")
     sm.update(1)  # this will 'update' 5 units of m's work
     sm.done()     # this will 'update' the remainig units of m's work
 
@@ -158,6 +147,14 @@ class ProgressMonitor(object):
         if message is None:
             message = "{self.name} done".format(**locals()) if self.name else "Done"
         self.update(units=self.total - self.worked, message=message)
+
+    @property
+    def is_done(self):
+        tot = self.worked
+        for submonitor, weight in self.sub_monitors.items():
+            if submonitor.is_done:
+                tot += weight
+        return tot >= self.total
 
 
 class NullMonitor(ProgressMonitor):

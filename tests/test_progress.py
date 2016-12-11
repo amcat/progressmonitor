@@ -1,4 +1,4 @@
-from nose.tools import assert_almost_equal, assert_equal
+from nose.tools import assert_almost_equal, assert_equal, assert_true, assert_false
 
 from progressmonitor import ProgressMonitor, monitored
 
@@ -23,6 +23,8 @@ def test_submonitors():
     sm1.done()
     assert_almost_equal(sm1.progress, 1)
     assert_almost_equal(monitor.progress, .2 + .2)
+    assert_false(monitor.is_done)
+    assert_true(sm1.is_done)
 
     # Recursive submonitors should work
     sm2 = monitor.submonitor(60)
@@ -40,6 +42,9 @@ def test_submonitors():
     assert_almost_equal(subsub.progress, .5)
     assert_almost_equal(sm2.progress, 1)
     assert_almost_equal(monitor.progress, 1)
+
+    assert_true(monitor.is_done)
+    assert_true(sm2.is_done)
 
     # Updates over 100% should not work
     subsub.update()
